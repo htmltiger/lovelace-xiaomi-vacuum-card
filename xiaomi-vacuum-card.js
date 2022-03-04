@@ -1,6 +1,6 @@
 ((LitElement) => {
     console.info(
-        '%c XIAOMI-VACUUM-CARD %c 4.4.0 ',
+        '%c XIAOMI-VACUUM-CARD %c 4.5.0 ',
         'color: cyan; background: black; font-weight: bold;',
         'color: darkblue; background: white; font-weight: bold;',
     );
@@ -248,9 +248,13 @@
 .grid-left {
   text-align: left;
   font-size: 110%;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary-color);
 }
 .grid-right {
   text-align: right;
+  padding-right: 10px;
+  border-right: 2px solid var(--primary-color);
 }`;
         }
 
@@ -299,7 +303,7 @@
             const hasDropdown = `${data.key}_list` in this.stateObj.attributes;
 
             return (hasDropdown && value !== null)
-                ? this.renderDropdown(this.renderIcon(data), attribute, data.key, data.service)
+                ? this.renderDropdown(attribute, data.key, data.service)
                 : attribute;
         }
 
@@ -321,20 +325,27 @@
                 : null;
         }
 
-        renderDropdown(icon, attribute, key, service) {
-            const selected = this.stateObj.attributes[key];
+        renderDropdown(attribute, key, service) {
             const list = this.stateObj.attributes[`${key}_list`];
+
             return html`
-		<ha-select
-          .label=${(key.replace('_',' '))}
-          .value=${selected}
-          @selected=${e => this.handleChange(e, key, service)}
-          @click=${e => e.stopPropagation()}
-          @closed=${e => e.stopPropagation()}
-        >
-          ${list.map((o) => html`<mwc-list-item .value=${o}>${icon}${o}</mwc-list-item>`)}
-        </ha-select>
-		`;
+                <div style="position: relative" @click=${e => e.stopPropagation()}>
+                    <ha-button @click=${() => this.toggleMenu(key)}>
+                      ${attribute}
+                    </ha-button>
+                    <mwc-menu
+                      @selected=${e => this.handleChange(list[e.detail.index], key, service)}
+                      id=${`xvc-menu-${key}`}
+                      activatable
+                      corner="BOTTOM_START">
+                        ${list.map(item => html`<mwc-list-item value=${item}>${item}</mwc-list-item>`)}
+                    </mwc-menu>
+                </div>`;
+        }
+
+        toggleMenu(key) {
+            const menu = this.shadowRoot.querySelector(`#xvc-menu-${key}`);
+            menu.open = !menu.open;
         }
 
         getCardSize() {
@@ -382,8 +393,7 @@
             this._hass = hass;
         }
 
-        handleChange(e, key, service) {
-            const mode = e.target.value;
+        handleChange(mode, key, service) {
             this.callService(service || `vacuum.set_${key}`, {entity_id: this.stateObj.entity_id, [key]: mode});
         }
 
