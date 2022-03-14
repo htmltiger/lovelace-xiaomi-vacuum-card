@@ -222,14 +222,6 @@
   background-position: center center;
   background-size: cover;
 }
-.title {
-  font-size: 20px;
-  padding: 12px 16px 8px;
-  text-align: center;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
 .flex {
   display: flex;
   align-items: center;
@@ -248,13 +240,9 @@
 .grid-left {
   text-align: left;
   font-size: 110%;
-  padding-left: 10px;
-  border-left: 2px solid var(--primary-color);
 }
 .grid-right {
   text-align: right;
-  padding-right: 10px;
-  border-right: 2px solid var(--primary-color);
 }`;
         }
 
@@ -262,7 +250,7 @@
             return this.stateObj ? html`
             <ha-card class="background" style="${this.config.styles.background}">
               ${this.config.show.name ?
-                html`<div class="title">${this.config.name || this.stateObj.attributes.friendly_name}</div>`
+                html`<h1 class="card-header">${this.config.name || this.stateObj.attributes.friendly_name}</h1>`
                 : null}
               ${(this.config.show.state || this.config.show.attributes) ? html`
               <div class="grid" style="${this.config.styles.content}" @click="${() => this.fireEvent('hass-more-info')}">
@@ -288,22 +276,40 @@
             const isValidAttribute = data && data.key in this.stateObj.attributes;
             const isValidEntityData = data && data.key in this.stateObj;
 
-            const value = isValidSensorData
+            let value = isValidSensorData
                 ? computeFunc(this._hass.states[`${this.config.sensorEntity}_${data.key}`].state) + (data.unit || '')
                 : isValidAttribute
                     ? computeFunc(this.stateObj.attributes[data.key]) + (data.unit || '')
                     : isValidEntityData
                         ? computeFunc(this.stateObj[data.key]) + (data.unit || '')
                         : null;
+						
+            let hasDropdown = `${data.key}_list` in this.stateObj.attributes;
+			let list=[];
+			let serv=data.service;
+			let param=data.key;
+			if(hasDropdown){
+				list=this.stateObj.attributes[`${data.key}_list`];
+			}else{
+				const selecter=`select.${this.config.entity.split('.')[1]}_${data.key}`;
+				if(selecter in this._hass.states){
+					list=this._hass.states[selecter].attributes.options;
+					value=this._hass.states[selecter].state;
+					serv='select.select_option';
+					param='option';
+					hasDropdown=true;
+				}
+			}
+			
+			
             const attribute = html`<div>
                 ${data.icon && this.renderIcon(data)}
                 ${(data.label || '') + (value !== null ? value : this._hass.localize('state.default.unavailable'))}
             </div>`;
 
-            const hasDropdown = `${data.key}_list` in this.stateObj.attributes;
 
             return (hasDropdown && value !== null)
-                ? this.renderDropdown(attribute, data.key, data.service)
+                ? this.renderDropdown(attribute, param, serv, list)
                 : attribute;
         }
 
@@ -325,8 +331,7 @@
                 : null;
         }
 
-        renderDropdown(attribute, key, service) {
-            const list = this.stateObj.attributes[`${key}_list`];
+        renderDropdown(attribute, key, service, list) {
 
             return html`
                 <div style="position: relative" @click=${e => e.stopPropagation()}>
